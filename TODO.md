@@ -1,0 +1,3 @@
+ - Try different values of alpha and visualize
+ - See how much starting point makes a difference
+ -  

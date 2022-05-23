@@ -15,7 +15,7 @@ class QAgent:
         learning_rate: float = 0.1,
         discount: float = 0.95,
         epsilon: float = 1,
-        epsilon_decay: float = 0.99,
+        epsilon_decay: float = 0.995,
     ) -> None:
 
         self.env = env

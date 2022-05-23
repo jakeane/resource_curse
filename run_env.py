@@ -1,17 +1,82 @@
+from collections import Counter
+
+import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
 from resource_curse import ResourceCurseEnv
 from qagent import QAgent
 
 
 def main():
-    env = ResourceCurseEnv(reward=5, social_reward=2, alpha=1.5, political_reward=1)
 
-    country = QAgent(env, (-2, 7.5), 30)
-    world = QAgent(env, (-1, 5), 30)
+    q_diffs = list()
 
-    for i in range(1000):
+    for i in range(20):
+        q_table = run_env({}, {"alpha": 1.2 + (i / 10)})
+        q_diffs.append(q_table.T[0] - q_table.T[1])
+
+    q_array = np.array(q_diffs)
+    np.save("./qagent_alpha.npy", q_array)
+    make_plot(q_array, "Alpha", 1.2, 3.2)
+
+    q_diffs = list()
+
+    for i in range(20):
+        q_table = run_env({"discount": 0.45 + (i / 40)}, {})
+        q_diffs.append(q_table.T[0] - q_table.T[1])
+
+    q_array = np.array(q_diffs)
+    np.save("./qagent_discount.npy", q_array)
+    make_plot(q_array, "Discount", 0.45, 0.95)
+
+    q_diffs = list()
+
+    for i in range(20):
+        q_table = run_env({}, {"tran_coef": 0.01 + (i / 100)})
+        q_diffs.append(q_table.T[0] - q_table.T[1])
+
+    q_array = np.array(q_diffs)
+    np.save("./qagent_transition.npy", q_array)
+    make_plot(q_array, "Transition", 0.01, 0.21)
+
+
+def make_plot(a, ylabel, ylow, yhigh):
+    plt.imshow(a, interpolation="nearest", origin="lower")
+    cbar = plt.colorbar()
+    cbar.set_label("Q(Diversify - Single Sector)", rotation=270, labelpad=20)
+
+    plt.xticks(
+        np.arange(0, 20, step=4),
+        map(lambda x: str(round(x, 1)), np.arange(0, 1, step=0.2)),
+    )
+    plt.xlabel("State")
+
+    ystep = (yhigh - ylow) / 5
+    plt.yticks(
+        np.arange(0, 20, step=4),
+        map(lambda x: str(round(x, 2)), np.arange(ylow, yhigh, step=ystep)),
+    )
+    plt.ylabel(ylabel)
+    plt.title(f"Q Agent Decision Making w.r.t. State and {ylabel}")
+    plt.savefig(f"./qagent_{ylabel.lower()}.png")
+    plt.close()
+
+
+def run_env(agent_kwargs, env_kwargs):
+    env = ResourceCurseEnv(**env_kwargs)
+
+    country = QAgent(env, (-2, 7.5), 20, **agent_kwargs)
+    world = QAgent(env, (-1, 5), 20)
+
+    state_counter = Counter()
+
+    for i in tqdm(range(2000)):
         state = env.reset()
         done = False
         while not done:
+            state_counter[country._get_discrete_state(state)] += 1
+
             country_action = country.predict(state, i)
             world_action = world.predict(state, i)
             action = country_action, world_action
@@ -24,13 +89,16 @@ def main():
 
             state = next_state
 
-        if not i % 100:
-            print("-" * 16)
-            print("country q-table")
-            print(country.q_table)
-            print("world q-table")
-            print(world.q_table)
-            print("-" * 16)
+        # if not i % 100:
+        #     print("-" * 16)
+        #     print("country q-table")
+        #     print(country.q_table)
+        #     print("world q-table")
+        #     print(world.q_table)
+        #     print("-" * 16)
+        #     print(state_counter)
+
+    return country.q_table
 
 
 if __name__ == "__main__":
