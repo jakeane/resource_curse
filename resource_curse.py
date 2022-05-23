@@ -6,27 +6,34 @@ class ResourceCurseEnv:
     def __init__(
         self, reward=5, social_reward=2, alpha=1.5, political_reward=1, tran_coef=0.05
     ):
-
+        # init env
         self.state = 0.5
         self.time = 0
 
+        # init parameters
         self.reward = reward
         self.social_reward = social_reward
         self.alpha = alpha
         self.political_reward = political_reward
         self.tran_coef = tran_coef
 
+        # init env attributes
         self.action_space = np.array([0, 1])
         self.obs_shape = (1,)
 
     def reset(self):
+        "restart environment with a random initial state"
         self.time = 0
         self.state = random.random()
         return self.state
 
     def get_reward(self, state, action):
+        "reward calculation"
+
+        # get actions of co-players
         action_country, action_world = action
 
+        # determine quadrant in reward table and calculate rewards
         if action_country and action_world:
             return (
                 -state * self.social_reward,
@@ -40,8 +47,10 @@ class ResourceCurseEnv:
             return (state * self.reward, self.reward)
 
     def next_state(self, state, action):
+        # get actions of co-players
         action_country, action_world = action
 
+        # determine next state based on actions
         if action_country and action_world:
             return state - self.tran_coef
         elif action_country and not action_world:
@@ -54,16 +63,12 @@ class ResourceCurseEnv:
     def step(self, action):
         reward = self.get_reward(self.state, action)
 
+        # the self._clamp ensures the next states is between 0 and 1
         obs = self._clamp(self.next_state(self.state, action))
-
-        # if self.state >= 0.5 and self.state < 0.55:
-        #     print("-" * 10)
-        #     print(f"observating: {obs} from ({self.state}, {action})")
-        #     print(f"reward: {reward}")
 
         self.state = obs
         self.time += 1
-        done = self.time > 200
+        done = self.time > 200  # for now, the stop condition is a time limit
 
         return obs, reward, done, None
 
